@@ -8,6 +8,7 @@ Imports System
 Imports System.IO
 Imports Microsoft.VisualBasic
 Imports System.Text
+Imports System.Security.Cryptography
 
 Module Module1
     Public sqlConn As System.Data.SqlClient.SqlConnection
@@ -243,6 +244,9 @@ Module Module1
             Usuario = Config.GetValue("USUARIO", GetType(System.String)).ToString
             Password = Config.GetValue("CONTRASEÑA", GetType(System.String)).ToString
             FicheroLog = Config.GetValue("LOG", GetType(System.String)).ToString
+
+            Usuario = Decrypt("_Avestruz19", Usuario)
+            Password = Decrypt("_Avestruz19", Password)
         Catch ex As System.Exception
             MsgBox("Error al leer parámetros " & ex.Message, MsgBoxStyle.Critical)
             Leer_Parametros = False
@@ -263,4 +267,24 @@ Module Module1
 
     End Sub
 
+
+    Public Function Decrypt(clave As String, cipherText As String) As String
+        Dim EncryptionKey As String = clave
+        Dim cipherBytes As Byte() = Convert.FromBase64String(cipherText)
+        Using encryptor As Aes = Aes.Create()
+            Dim pdb As New Rfc2898DeriveBytes(EncryptionKey, New Byte() {&H49, &H76, &H61, &H6E, &H20, &H4D,
+             &H65, &H64, &H76, &H65, &H64, &H65,
+             &H76})
+            encryptor.Key = pdb.GetBytes(32)
+            encryptor.IV = pdb.GetBytes(16)
+            Using ms As New MemoryStream()
+                Using cs As New CryptoStream(ms, encryptor.CreateDecryptor(), CryptoStreamMode.Write)
+                    cs.Write(cipherBytes, 0, cipherBytes.Length)
+                    cs.Close()
+                End Using
+                cipherText = Encoding.Unicode.GetString(ms.ToArray())
+            End Using
+        End Using
+        Return cipherText
+    End Function
 End Module
